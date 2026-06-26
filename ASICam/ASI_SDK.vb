@@ -140,4 +140,8 @@ Public Class ASI_SDK
     Public Shared Function ASIGetROIFormat(ByVal IntCamID As Integer, ByRef pWidth As Integer, ByRef pHeight As Integer, ByRef pBin As Integer, ByRef pImg_type As ASI_IMG_TYPE) As Integer
     End Function
 
+    ' ★この1行を ASI_SDK.vb の関数宣言ブロックに追記してください
+    <DllImport(DLL_PATH, CallingConvention:=CallingConvention.Cdecl)>
+    Public Shared Function ASISetStartPos(ByVal iCameraID As Integer, ByVal iStartX As Integer, ByVal iStartY As Integer) As Integer
+    End Function
 End Class
