@@ -481,10 +481,11 @@ Public Class ClsZwoCamera
             Dim frame As Mat = Nothing
             If _streamQueue.TryDequeue(frame) Then
                 Using frame
-                    ' 1. カメラ解像度・FPS、またはユーザーによるUIのON/OFF切り替えが発生したか？
+                    ' 1. カメラ解像度、またはユーザーによるUIのON/OFF切り替えが発生したか？
                     Dim baseChanged As Boolean = False
+
+                    ' 💡【修正】オート露出によるFPS変動で再起動しないよう、FPS判定を完全に削除しました
                     If lastW <> frame.Width OrElse lastH <> frame.Height OrElse
-                       Math.Abs(lastFps - _currentFps) > 5.0 OrElse
                        lastStreamState <> _isStreamEnabled OrElse
                        lastRecordState <> _isRecordEnabled Then
                         baseChanged = True
@@ -537,8 +538,10 @@ Public Class ClsZwoCamera
 
                     ' 共通の実行ファイルパスと引数基礎値
                     Dim exePath As String = System.IO.Path.Combine(Application.StartupPath, "ffmpeg.exe")
-                    Dim fpsStr As String = lastFps.ToString("F1")
-                    Dim gopSize As Integer = CInt(Math.Max(5, lastFps))
+
+                    ' 💡【修正】実際のFPS変動に惑わされないよう、配信のベースFPSを30固定にする
+                    Dim fpsStr As String = "30.0"
+                    Dim gopSize As Integer = 30
 
                     ' 💡【ここを追加！】PCのスペックに合わせた最強のエンコードコマンドを自動生成する
                     Dim autoEncodeArgs As String = BasFunction.GetOptimalEncoderArgs(fpsStr, gopSize)
@@ -714,4 +717,5 @@ Public Class ClsZwoCamera
         End If
         MyBase.Finalize()
     End Sub
+
 End Class
