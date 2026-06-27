@@ -239,6 +239,68 @@ Module BasFunction
         Return "127.0.0.1"
     End Function
 
+    ' ==========================================================
+    ' ★【追加】GPUの判定結果を記憶する変数（毎回調べると重いのでキャッシュします）
+    ' ==========================================================
+    Public _hasIntel As Boolean = False
+    Public _hasNvidia As Boolean = False
+    Public _hasAmd As Boolean = False
+    Public _isGpuChecked As Boolean = False
 
+    ''' <summary>
+    ''' アプリ起動時に1回だけPCのGPUをチェックします
+    ''' </summary>
+    Public Sub CheckGpuCapabilities()
+        If _isGpuChecked Then Return
+        Try
+            Dim searcher As New System.Management.ManagementObjectSearcher("SELECT Name FROM Win32_VideoController")
+            For Each obj As System.Management.ManagementObject In searcher.Get()
+                Dim gpuName As String = obj("Name").ToString().ToLower()
+                If gpuName.Contains("nvidia") Then _hasNvidia = True
+                If gpuName.Contains("amd") OrElse gpuName.Contains("radeon") Then _hasAmd = True
+                If gpuName.Contains("intel") Then _hasIntel = True
+            Next
+        Catch ex As Exception
+        End Try
+        _isGpuChecked = True
+    End Sub
+
+  ''' <summary>
+    ''' PCに搭載されているGPUを判定し、自動選択されるエンコーダの名前を返します
+    ''' </summary>
+    Public Function GetAutoDetectedEncoderName() As String
+        If Not _isGpuChecked Then CheckGpuCapabilities()
+
+        If _hasNvidia Then Return "NVIDIA NVENC"
+        If _hasAmd Then Return "AMD AMF"
+        If _hasIntel Then Return "Intel QSV"
+        Return "ソフトウェア (libx264)"
+    End Function
+
+    ''' <summary>
+    ''' PCの搭載GPUを判定し、最も安全なエンコード引数を生成します（キャッシュ利用で爆速化）
+    ''' </summary>
+    Public Function GetOptimalEncoderArgs(fpsStr As String, gopSize As Integer) As String
+        If Not _isGpuChecked Then CheckGpuCapabilities()
+
+        Dim pref As Integer = My.Settings.EncoderPreference
+        Dim softwareArgs As String = $"-c:v libx264 -preset veryfast -tune zerolatency -crf 20 -b:v 8M -maxrate 8M -bufsize 4M -r {fpsStr} -g {gopSize} "
+
+        Select Case pref
+            Case 1 ' QSV
+                If _hasIntel Then Return $"-c:v h264_qsv -preset fast -b:v 8M -maxrate 8M -bufsize 4M -r {fpsStr} -g {gopSize} " Else Return softwareArgs
+            Case 2 ' NVENC
+                If _hasNvidia Then Return $"-c:v h264_nvenc -preset fast -b:v 8M -maxrate 8M -bufsize 4M -r {fpsStr} -g {gopSize} " Else Return softwareArgs
+            Case 3 ' AMF
+                If _hasAmd Then Return $"-c:v h264_amf -quality speed -b:v 8M -maxrate 8M -bufsize 4M -r {fpsStr} -g {gopSize} " Else Return softwareArgs
+            Case 4 ' ソフトウェア
+                Return softwareArgs
+            Case Else ' 0 (自動判定)
+                If _hasNvidia Then Return $"-c:v h264_nvenc -preset fast -b:v 8M -maxrate 8M -bufsize 4M -r {fpsStr} -g {gopSize} "
+                If _hasAmd Then Return $"-c:v h264_amf -quality speed -b:v 8M -maxrate 8M -bufsize 4M -r {fpsStr} -g {gopSize} "
+                If _hasIntel Then Return $"-c:v h264_qsv -preset fast -b:v 8M -maxrate 8M -bufsize 4M -r {fpsStr} -g {gopSize} "
+                Return softwareArgs
+        End Select
+    End Function
 
 End Module

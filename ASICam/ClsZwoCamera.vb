@@ -436,38 +436,43 @@ Public Class ClsZwoCamera
             ' ==========================================================
             If _isRecordEnabled AndAlso (DateTime.Now - lastCleanupTime).TotalHours >= 1.0 Then
                 lastCleanupTime = DateTime.Now
-                Try
-                    ' --- 🧹 A. 自動お掃除（古いファイルの削除） ---
-                    If System.IO.Directory.Exists(_recordSavePath) Then
-                        Dim threshold As DateTime = DateTime.Now.AddDays(-_retentionDays)
-                        Dim dirInfo As New System.IO.DirectoryInfo(_recordSavePath)
 
-                        For Each fileInfo In dirInfo.GetFiles("*.mp4", System.IO.SearchOption.AllDirectories)
-                            If fileInfo.CreationTime < threshold Then
-                                Try
-                                    fileInfo.Delete()
-                                    System.Diagnostics.Debug.WriteLine($"古い録画を自動削除しました: {fileInfo.Name}")
-                                Catch ex As Exception
-                                    ' 使用中ファイル等は安全スルー
-                                End Try
-                            End If
-                        Next
-                    End If
+                ' 💡【ここから別スレッド化】
+                ' メインの映像パイプラインを一切止めず、裏の清掃用スレッドに丸投げ（Fire and Forget）します
+                Task.Run(Sub()
+                             Try
+                                 ' --- 🧹 A. 自動お掃除（古いファイルの削除） ---
+                                 If System.IO.Directory.Exists(_recordSavePath) Then
+                                     Dim threshold As DateTime = DateTime.Now.AddDays(-_retentionDays)
+                                     Dim dirInfo As New System.IO.DirectoryInfo(_recordSavePath)
 
-                    ' --- 🚨 B. 最終防衛線（1時間に1回チェック） ---
-                    Dim root As String = System.IO.Path.GetPathRoot(_recordSavePath)
-                    Dim dInfo As New System.IO.DriveInfo(root)
-                    If dInfo.IsReady Then
-                        Dim freeGB As Double = dInfo.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0)
+                                     For Each fileInfo In dirInfo.GetFiles("*.mp4", System.IO.SearchOption.AllDirectories)
+                                         If fileInfo.CreationTime < threshold Then
+                                             Try
+                                                 fileInfo.Delete()
+                                                 System.Diagnostics.Debug.WriteLine($"古い録画を自動削除しました: {fileInfo.Name}")
+                                             Catch ex As Exception
+                                                 ' 使用中ファイル等は安全スルー
+                                             End Try
+                                         End If
+                                     Next
+                                 End If
 
-                        ' 💡【修正】古いものを消した結果、それでも「10GB未満」なら緊急停止！
-                        If freeGB < 10.0 Then
-                            RaiseEvent DiskSpaceCritical()
-                        End If
-                    End If
+                                 ' --- 🚨 B. 最終防衛線（1時間に1回チェック） ---
+                                 Dim root As String = System.IO.Path.GetPathRoot(_recordSavePath)
+                                 Dim dInfo As New System.IO.DriveInfo(root)
+                                 If dInfo.IsReady Then
+                                     Dim freeGB As Double = dInfo.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0)
 
-                Catch ex As Exception
-                End Try
+                                     If freeGB < 10.0 Then
+                                         RaiseEvent DiskSpaceCritical()
+                                     End If
+                                 End If
+
+                             Catch ex As Exception
+                             End Try
+                         End Sub)
+                ' 💡【ここまで】
             End If
 
             ' ==========================================================
@@ -535,15 +540,23 @@ Public Class ClsZwoCamera
                     Dim fpsStr As String = lastFps.ToString("F1")
                     Dim gopSize As Integer = CInt(Math.Max(5, lastFps))
 
+                    ' 💡【ここを追加！】PCのスペックに合わせた最強のエンコードコマンドを自動生成する
+                    Dim autoEncodeArgs As String = BasFunction.GetOptimalEncoderArgs(fpsStr, gopSize)
+
                     ' ==========================================================
                     ' 2. 🚀【正式文法展開】RTSP配信プロセスの個別監視・個別起動
                     ' ==========================================================
                     If _isStreamEnabled Then
                         If ffmpegStreamProcess Is Nothing OrElse ffmpegStreamProcess.HasExited Then
 
-                            ' 💡 配信側を元の「8M / CRF 20 / veryfast」の最高画質に戻します
+                            ' ' 💡 配信側を元の「8M / CRF 20 / veryfast」の最高画質に戻します
+                            ' Dim streamArgs As String = $"-y -use_wallclock_as_timestamps 1 -f rawvideo -vcodec rawvideo -pix_fmt bgr24 -s {lastW}x{lastH} -i - " &
+                            '$"-c:v libx264 -preset veryfast -tune zerolatency -r {fpsStr} -g {gopSize} -crf 20 -b:v 8M -maxrate 8M -bufsize 4M " &
+                            '$"-rtsp_transport tcp -f rtsp {url}"
+
+                            ' 💡【修正】autoEncodeArgs を差し込んでスッキリさせる
                             Dim streamArgs As String = $"-y -use_wallclock_as_timestamps 1 -f rawvideo -vcodec rawvideo -pix_fmt bgr24 -s {lastW}x{lastH} -i - " &
-                           $"-c:v libx264 -preset veryfast -tune zerolatency -r {fpsStr} -g {gopSize} -crf 20 -b:v 8M -maxrate 8M -bufsize 4M " &
+                           autoEncodeArgs &
                            $"-rtsp_transport tcp -f rtsp {url}"
 
                             Dim startInfo As New System.Diagnostics.ProcessStartInfo()
@@ -580,9 +593,14 @@ Public Class ClsZwoCamera
                             ' 💡【修正】画面から受け取った「分」を「秒」に変換
                             Dim splitSeconds As Integer = splitMinutes * 60
 
-                            ' 💡【黄金比アジャスト】固定の600ではなく {splitSeconds} を使って分割設定
+                            ' ' 💡【黄金比アジャスト】固定の600ではなく {splitSeconds} を使って分割設定
+                            ' Dim recordArgs As String = $"-y -use_wallclock_as_timestamps 1 -f rawvideo -vcodec rawvideo -pix_fmt bgr24 -s {lastW}x{lastH} -i - " &
+                            '$"-c:v libx264 -preset veryfast -tune zerolatency -r {fpsStr} -g {gopSize} -crf 20 -b:v 8M -maxrate 8M -bufsize 4M " &
+                            '$"-f segment -segment_time {splitSeconds} -segment_atclocktime 1 -reset_timestamps 1 -strftime 1 ""{normalPath}/ASICam_%Y%m%d_%H%M00.mp4"""
+
+                            ' 💡【修正】autoEncodeArgs を差し込んでスッキリさせる
                             Dim recordArgs As String = $"-y -use_wallclock_as_timestamps 1 -f rawvideo -vcodec rawvideo -pix_fmt bgr24 -s {lastW}x{lastH} -i - " &
-                           $"-c:v libx264 -preset veryfast -tune zerolatency -r {fpsStr} -g {gopSize} -crf 20 -b:v 8M -maxrate 8M -bufsize 4M " &
+                           autoEncodeArgs &
                            $"-f segment -segment_time {splitSeconds} -segment_atclocktime 1 -reset_timestamps 1 -strftime 1 ""{normalPath}/ASICam_%Y%m%d_%H%M00.mp4"""
 
                             Dim startInfo As New System.Diagnostics.ProcessStartInfo()

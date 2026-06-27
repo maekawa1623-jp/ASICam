@@ -77,6 +77,7 @@ Partial Class FrmMain
         TxtRtspUrl = New TextBox()
         ChkRecord = New CheckBox()
         BtnSetSavePath = New Button()
+        BtnAdvancedSettings = New Button()
         GroupBox1.SuspendLayout()
         GroupBox2.SuspendLayout()
         CType(TrcUsbBandwidth, ComponentModel.ISupportInitialize).BeginInit()
@@ -576,18 +577,28 @@ Partial Class FrmMain
         ' 
         ' BtnSetSavePath
         ' 
-        BtnSetSavePath.Location = New Point(442, 506)
+        BtnSetSavePath.Location = New Point(349, 506)
         BtnSetSavePath.Name = "BtnSetSavePath"
         BtnSetSavePath.Size = New Size(80, 23)
         BtnSetSavePath.TabIndex = 16
         BtnSetSavePath.Text = "保存先設定"
         BtnSetSavePath.UseVisualStyleBackColor = True
         ' 
+        ' BtnAdvancedSettings
+        ' 
+        BtnAdvancedSettings.Location = New Point(447, 506)
+        BtnAdvancedSettings.Name = "BtnAdvancedSettings"
+        BtnAdvancedSettings.Size = New Size(80, 23)
+        BtnAdvancedSettings.TabIndex = 17
+        BtnAdvancedSettings.Text = "詳細設定"
+        BtnAdvancedSettings.UseVisualStyleBackColor = True
+        ' 
         ' FrmMain
         ' 
         AutoScaleDimensions = New SizeF(7F, 15F)
         AutoScaleMode = AutoScaleMode.Font
         ClientSize = New Size(539, 561)
+        Controls.Add(BtnAdvancedSettings)
         Controls.Add(BtnSetSavePath)
         Controls.Add(ChkRecord)
         Controls.Add(GroupBox6)
@@ -686,4 +697,5 @@ Partial Class FrmMain
     Friend WithEvents ChkRecord As CheckBox
     Friend WithEvents BtnSetSavePath As Button
     Friend WithEvents LblRecordStatus As ToolStripStatusLabel
+    Friend WithEvents BtnAdvancedSettings As Button
 End Class

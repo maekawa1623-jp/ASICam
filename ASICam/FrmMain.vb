@@ -1039,4 +1039,15 @@ Public Class FrmMain
         End If
     End Sub
 
+    ' ==========================================================
+    ' ★ 詳細設定画面を開く処理
+    ' ==========================================================
+    Private Sub BtnAdvancedSettings_Click(sender As Object, e As EventArgs) Handles BtnAdvancedSettings.Click
+        Using frm As New FrmAdvancedSettings()
+            ' 💡 詳細設定ダイアログを表示し、「保存(OK)」が押されて戻ってきたら新しい設定を即座に反映する
+            If frm.ShowDialog(Me) = DialogResult.OK Then
+                ApplyOutputSettings()
+            End If
+        End Using
+    End Sub
 End Class

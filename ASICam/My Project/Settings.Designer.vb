@@ -89,6 +89,18 @@ Namespace My
                 Me("RecordSplitTime") = value
             End Set
         End Property
+        
+        <Global.System.Configuration.UserScopedSettingAttribute(),  _
+         Global.System.Diagnostics.DebuggerNonUserCodeAttribute(),  _
+         Global.System.Configuration.DefaultSettingValueAttribute("0")>  _
+        Public Property EncoderPreference() As Integer
+            Get
+                Return CType(Me("EncoderPreference"),Integer)
+            End Get
+            Set
+                Me("EncoderPreference") = value
+            End Set
+        End Property
     End Class
 End Namespace
 

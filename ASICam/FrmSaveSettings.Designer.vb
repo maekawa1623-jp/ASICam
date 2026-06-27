@@ -54,7 +54,7 @@ Partial Class FrmSaveSettings
         ' 
         ' BtnSave
         ' 
-        BtnSave.Location = New Point(272, 159)
+        BtnSave.Location = New Point(272, 122)
         BtnSave.Name = "BtnSave"
         BtnSave.Size = New Size(80, 30)
         BtnSave.TabIndex = 2
@@ -63,7 +63,7 @@ Partial Class FrmSaveSettings
         ' 
         ' BtnCancel
         ' 
-        BtnCancel.Location = New Point(186, 159)
+        BtnCancel.Location = New Point(186, 122)
         BtnCancel.Name = "BtnCancel"
         BtnCancel.Size = New Size(80, 30)
         BtnCancel.TabIndex = 3
@@ -138,7 +138,7 @@ Partial Class FrmSaveSettings
         ' 
         AutoScaleDimensions = New SizeF(7F, 15F)
         AutoScaleMode = AutoScaleMode.Font
-        ClientSize = New Size(364, 201)
+        ClientSize = New Size(364, 161)
         Controls.Add(Label5)
         Controls.Add(Label4)
         Controls.Add(CmbSplitTime)
@@ -151,8 +151,10 @@ Partial Class FrmSaveSettings
         Controls.Add(BtnBrowse)
         Controls.Add(TxtPath)
         FormBorderStyle = FormBorderStyle.FixedDialog
+        MaximizeBox = False
+        MinimizeBox = False
         Name = "FrmSaveSettings"
-        Text = "FrmSaveSettings"
+        Text = "録画設定"
         CType(NumRetentionDays, ComponentModel.ISupportInitialize).EndInit()
         ResumeLayout(False)
         PerformLayout()
